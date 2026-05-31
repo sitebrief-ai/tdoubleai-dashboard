@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b0a08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TDoubleAI">
+<title>TDoubleAI — Command</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Barlow:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --dark:#0b0a08;--dark2:#131210;--dark3:#1c1a16;--dark4:#221f1a;
+  --amber:#c84f09;--amber-dim:rgba(200,79,9,0.15);--amber-border:rgba(200,79,9,0.35);
+  --lime:#b4d200;--lime-dim:rgba(180,210,0,0.12);--lime-border:rgba(180,210,0,0.3);
+  --white:#ffffff;--muted:#6b6760;--border:rgba(255,255,255,0.07);
+  --red:#e05050;--blue:#7a9fff;
+  --h:100dvh;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--dark)}
+body{font-family:'Barlow',sans-serif;color:var(--white);font-size:14px;line-height:1.5;display:flex;flex-direction:column}
+
+/* SCAN LINES */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);pointer-events:none;z-index:9000}
+body::after{content:'';position:fixed;inset:10px;border:1px solid rgba(200,79,9,0.15);pointer-events:none;z-index:9001}
+
+/* TITLEBAR */
+.titlebar{
+  height:44px;background:var(--dark2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;flex-shrink:0;
+  -webkit-app-region:drag;app-region:drag;
+  user-select:none;
+}
+.tb-left{display:flex;align-items:baseline;gap:10px}
+.tb-logo{font-family:'DM Serif Display',serif;font-style:italic;font-size:18px;color:var(--amber);letter-spacing:-.5px}
+.tb-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.tb-right{display:flex;align-items:center;gap:16px;-webkit-app-region:no-drag}
+.live-dot{display:flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--lime);letter-spacing:.1em}
+.live-dot::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.clock{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+
+/* TAB BAR */
+.tabbar{
+  height:38px;background:var(--dark2);border-bottom:1px solid var(--border);
+  display:flex;align-items:stretch;padding:0 16px;gap:2px;flex-shrink:0;
+}
+.tab{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--muted);padding:0 18px;cursor:pointer;border:none;background:transparent;
+  display:flex;align-items:center;gap:6px;border-bottom:2px solid transparent;
+  transition:color .15s,border-color .15s;white-space:nowrap;
+}
+.tab:hover{color:var(--white)}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+.tab-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.tab-badge{font-size:9px;padding:1px 5px;border-radius:2px;background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-border)}
+
+/* MAIN CONTENT */
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.tab-panel{display:none;flex:1;overflow:hidden;min-height:0;animation:fadeIn .2s ease}
+.tab-panel.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* PANELS */
+.panel{background:var(--dark);padding:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.panel-hdr{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.badge{font-size:8px;padding:2px 6px;border-radius:2px;letter-spacing:.08em}
+.badge-amber{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-lime{background:var(--lime-dim);color:var(--lime);border:1px solid var(--lime-border)}
+.badge-red{background:rgba(220,50,50,.12);color:var(--red);border:1px solid rgba(220,50,50,.3)}
+
+.scroll{overflow-y:auto;flex:1;min-height:0}
+.scroll::-webkit-scrollbar{width:3px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+
+/* DIVIDER LINE */
+.vdiv{width:1px;background:var(--border);flex-shrink:0}
+.hdiv{height:1px;background:var(--border);flex-shrink:0}
+
+/* ── TAB 1: FIELD (Pipeline + Intel) ── */
+#tab-field{flex-direction:row}
+.field-left{flex:1.1;display:flex;flex-direction:column;min-width:0}
+.field-right{flex:1;display:flex;flex-direction:column;min-width:0}
+
+/* Pipeline */
+.pipe-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--border)}
+.pipe-item:last-child{border-bottom:none}
+.pipe-co{font-weight:600;font-size:13px;color:var(--white);margin-bottom:2px}
+.pipe-contact{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:3px}
+.pipe-detail{font-size:11px;color:var(--muted);line-height:1.4}
+.pipe-stage{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:3px 6px;border-radius:2px;white-space:nowrap;letter-spacing:.06em;text-transform:uppercase}
+.s-warm{background:rgba(200,79,9,.2);color:var(--amber);border:1px solid var(--amber-border)}
+.s-active{background:var(--lime-dim);color:var(--lime);border:1px solid var(--lime-border)}
+.s-cold{background:rgba(107,103,96,.15);color:var(--muted);border:1px solid rgba(107,103,96,.2)}
+
+/* Intel */
+.intel{background:var(--dark3);border:1px solid var(--border);border-left:3px solid var(--amber);padding:10px 12px;margin-bottom:8px;border-radius:0 2px 2px 0}
+.intel.lime{border-left-color:var(--lime)}
+.intel.red{border-left-color:var(--red)}
+.intel-ttl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.intel-txt{font-size:11px;color:var(--white);line-height:1.5}
+
+/* ── TAB 2: OPS (Action Items) ── */
+#tab-ops{flex-direction:column}
+.ops-inner{display:grid;grid-template-columns:1fr 1fr;gap:1px;flex:1;background:var(--border);overflow:hidden;min-height:0}
+.ops-col{background:var(--dark);display:flex;flex-direction:column;overflow:hidden;padding:16px}
+.ops-col-hdr{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.ops-col-hdr::after{content:'';flex:1;height:1px;background:var(--amber-border)}
+.ops-col-hdr.lime-hdr{color:var(--lime)}
+.ops-col-hdr.lime-hdr::after{background:var(--lime-border)}
+.ops-col-hdr.red-hdr{color:var(--red)}
+.ops-col-hdr.red-hdr::after{background:rgba(220,50,50,.3)}
+
+.action{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+.action:last-child{border-bottom:none}
+.aflag{width:5px;height:5px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.aflag.red{background:var(--red);box-shadow:0 0 6px rgba(220,50,50,.5)}
+.aflag.amber{background:var(--amber);box-shadow:0 0 6px rgba(200,79,9,.5)}
+.aflag.lime{background:var(--lime);box-shadow:0 0 6px rgba(180,210,0,.4)}
+.action-txt{font-size:12px;color:var(--white);line-height:1.4;flex:1}
+.action-tag{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--muted);margin-top:2px}
+
+/* ── TAB 3: TOOLS (Sales Trainer + Deploy) ── */
+#tab-tools{flex-direction:row}
+.tools-left{flex:1;display:flex;flex-direction:column;min-width:0}
+.tools-right{flex:1;display:flex;flex-direction:column;min-width:0}
+
+/* Trainer card */
+.trainer-card{
+  background:var(--dark3);border:1px solid var(--amber-border);border-left:3px solid var(--amber);
+  padding:16px 18px;border-radius:0 2px 2px 0;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  text-decoration:none;transition:background .15s;margin-bottom:12px;
+}
+.trainer-card:hover{background:var(--dark4)}
+.trainer-ttl{font-weight:600;font-size:14px;color:var(--white);margin-bottom:4px}
+.trainer-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);line-height:1.5}
+.trainer-arrow{font-family:'IBM Plex Mono',monospace;font-size:22px;color:var(--amber);flex-shrink:0}
+
+/* Gemini prompt card */
+.prompt-card{background:var(--dark3);border:1px solid var(--border);border-left:3px solid var(--lime);padding:12px 14px;border-radius:0 2px 2px 0;margin-bottom:8px}
+.prompt-ttl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--lime);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.prompt-txt{font-size:11px;color:var(--muted);line-height:1.55}
+.copy-btn{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--amber);border:1px solid var(--amber-border);background:transparent;padding:3px 8px;border-radius:2px;cursor:pointer;margin-top:6px;letter-spacing:.06em;text-transform:uppercase;transition:background .15s}
+.copy-btn:hover{background:var(--amber-dim)}
+.copy-btn.copied{color:var(--lime);border-color:var(--lime-border)}
+
+/* Deploy paths */
+.deploy-section{margin-bottom:14px}
+.deploy-hdr{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.deploy-hdr::after{content:'';flex:1;height:1px;background:var(--amber-border)}
+.deploy-hdr.lime{color:var(--lime)}
+.deploy-hdr.lime::after{background:var(--lime-border)}
+.deploy-hdr.red{color:var(--red)}
+.deploy-hdr.red::after{background:rgba(220,50,50,.3)}
+.deploy-txt{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);line-height:1.9}
+.deploy-txt .ok{color:var(--lime)}
+.deploy-txt .warn{color:var(--amber)}
+.deploy-txt .danger{color:var(--red)}
+
+/* Stack mini */
+.stack-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)}
+.stack-row:last-child{border-bottom:none}
+.stack-nm{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--white)}
+.stack-dtl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--lime);margin-left:6px;flex-shrink:0}
+.sdot.amber{background:var(--amber)}
+.sdot.muted{background:var(--muted)}
+
+/* TICKER */
+.ticker{height:28px;background:var(--dark2);border-top:1px solid var(--border);overflow:hidden;z-index:100;display:flex;align-items:center;flex-shrink:0}
+.ticker-lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--amber);letter-spacing:.15em;padding:0 12px;white-space:nowrap;border-right:1px solid var(--amber-border);height:100%;display:flex;align-items:center}
+.ticker-scroll{flex:1;overflow:hidden}
+.ticker-inner{display:flex;white-space:nowrap;animation:tick 35s linear infinite;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.08em}
+.ticker-inner span{margin-right:50px}
+.ticker-inner .hi{color:var(--amber)}
+.ticker-inner .ok{color:var(--lime)}
+@keyframes tick{from{transform:translateX(100%)}to{transform:translateX(-200%)}}
+</style>
+</head>
+<body>
+
+<!-- TITLEBAR -->
+<div class="titlebar">
+  <div class="tb-left">
+    <span class="tb-logo">TDoubleAI</span>
+    <span class="tb-sub">Founder Command</span>
+  </div>
+  <div class="tb-right">
+    <span class="live-dot">RINGBACK LIVE</span>
+    <span class="clock" id="clock">—</span>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tabbar">
+  <button class="tab active" onclick="switchTab('field')" id="btn-field">
+    <span class="tab-dot"></span> FIELD
+    <span class="tab-badge">4</span>
+  </button>
+  <button class="tab" onclick="switchTab('ops')" id="btn-ops">
+    <span class="tab-dot"></span> OPS
+    <span class="tab-badge" style="background:rgba(220,50,50,.12);color:var(--red);border-color:rgba(220,50,50,.3)">3 RED</span>
+  </button>
+  <button class="tab" onclick="switchTab('tools')" id="btn-tools">
+    <span class="tab-dot"></span> TOOLS
+  </button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- TAB: FIELD -->
+  <div class="tab-panel active" id="tab-field">
+    <div class="field-left panel">
+      <div class="panel-hdr">Sales Pipeline <span class="badge badge-amber">4 ACTIVE</span></div>
+      <div class="scroll">
+        <div class="pipe-item">
+          <div>
+            <div class="pipe-co">Alliance Engineering & Construction</div>
+            <div class="pipe-contact">Marc Laliberte — Director of Project Development</div>
+            <div class="pipe-detail">Friel St report delivered May 15. Mockup May 14. "I'll let you know." 15+ days silent. Addendum email due Wed — phone Thu if silent.</div>
+          </div>
+          <span class="pipe-stage s-warm">Warm</span>
+        </div>
+        <div class="pipe-item">
+          <div>
+            <div class="pipe-co">CTHQ / ConTechHQ</div>
+            <div class="pipe-contact">Craig Hurst — Co-founder/CIO</div>
+            <div class="pipe-detail">Apr 30 verbal confirms terms. FWS primary, 2-way commission, §10.3 scoped, EO referrals. Monday memo email pending.</div>
+          </div>
+          <span class="pipe-stage s-active">Formal</span>
+        </div>
+        <div class="pipe-item">
+          <div>
+            <div class="pipe-co">Thomas Cavanagh Construction</div>
+            <div class="pipe-contact">Michel Smith — Health & Safety</div>
+            <div class="pipe-detail">SiteBrief AI warm prospect. Discovery questionnaire delivered. Response pending.</div>
+          </div>
+          <span class="pipe-stage s-cold">Waiting</span>
+        </div>
+        <div class="pipe-item">
+          <div>
+            <div class="pipe-co">Vibe Consulting — Lanark County</div>
+            <div class="pipe-contact">Business at Breakfast — May 27</div>
+            <div class="pipe-detail">Audit free. Target 1–3 trades. Anchor $2.5–5K implementation.</div>
+          </div>
+          <span class="pipe-stage s-active">In Market</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="vdiv"></div>
+
+    <div class="field-right panel">
+      <div class="panel-hdr">Ground Truth Intel</div>
+      <div class="scroll">
+        <div class="intel red">
+          <div class="intel-ttl">⚠ Alliance — Last Contact</div>
+          <div class="intel-txt">May 15 — report. May 14 — mockup. "I'll let you know." 15+ days silent. Clock running.</div>
+        </div>
+        <div class="intel">
+          <div class="intel-ttl">Alliance — Positioning</div>
+          <div class="intel-txt">QA layer — not a replacement. Discovery → Blueprint → Pilot → Expand. One ask: free Blueprint scope. Don't raise Phase 2 yet.</div>
+        </div>
+        <div class="intel lime">
+          <div class="intel-ttl">CTHQ — Verbal Terms (Apr 30)</div>
+          <div class="intel-txt">FWS primary. 2-way commissions. 7.5% Net Effect. §10.3 scoped to referred product. EO referrals for non-competing CTHQ software. Ottawa excluded.</div>
+        </div>
+        <div class="intel">
+          <div class="intel-ttl">Vibe Consulting — Anchor Line</div>
+          <div class="intel-txt">"Audit's no cost. Implementation $2,500–$5,000. Monthly ~$300. Most see that back in staff time inside 60 days."<br><br>Pushback: "Start with one use case — closer to $1,500."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: OPS -->
+  <div class="tab-panel" id="tab-ops">
+    <div class="ops-inner">
+      <div class="ops-col">
+        <div class="ops-col-hdr red-hdr">Critical / Security</div>
+        <div class="scroll">
+          <div class="action"><div class="aflag red"></div><div><div class="action-txt">Rotate ANTHROPIC_API_KEY — visible in Netlify screenshot. Disable at console.anthropic.com, generate new, update Railway + Netlify.</div><div class="action-tag">SECURITY · RINGBACK</div></div></div>
+          <div class="action"><div class="aflag red"></div><div><div class="action-txt">Rebuild RLS audit scripts — check-rls.js and lint-migrations.cjs never written. CI fails MODULE_NOT_FOUND every PR. Add SUPABASE_URL + SUPABASE_DB_PASSWORD to GitHub Secrets.</div><div class="action-tag">SECURITY · SUPABASE</div></div></div>
+          <div class="action"><div class="aflag red"></div><div><div class="action-txt">Canadian privacy legal review — PIPEDA cross-border (Stripe, Twilio, Anthropic, Supabase all US). CASL §3B, CPA 2023. Needs Canadian privacy lawyer.</div><div class="action-tag">LEGAL · RINGBACK · PRE-GO-LIVE</div></div></div>
+          <div class="ops-col-hdr" style="margin-top:14px">Sales</div>
+          <div class="action"><div class="aflag amber"></div><div><div class="action-txt">Alliance addendum email — Wednesday. Phone Marc Thursday if still silent. Frame: "gap-detection QA layer." One ask: free Blueprint scope.</div><div class="action-tag">ALLIANCE · M&E SCOPE READER</div></div></div>
+          <div class="action"><div class="aflag amber"></div><div><div class="action-txt">CTHQ Monday memo email — formalize Apr 30 verbal. Send from founder@tdoubleai.ca.</div><div class="action-tag">CTHQ · PARTNERSHIP</div></div></div>
+        </div>
+      </div>
+      <div class="ops-col">
+        <div class="ops-col-hdr lime-hdr">Tech / Product</div>
+        <div class="scroll">
+          <div class="action"><div class="aflag lime"></div><div><div class="action-txt">Evaluate Ringback V3 onboarding based on Day-6 SMS conversion vs current Task #65 flow.</div><div class="action-tag">RINGBACK · ONBOARDING</div></div></div>
+          <div class="action"><div class="aflag lime"></div><div><div class="action-txt">Upload Ringback_Onboarding_Guide_1080p_caption.mp4 to Cloudflare Stream. Embed above onboard.html. Blocked: GST/2FA issue May 17.</div><div class="action-tag">RINGBACK · CLOUDFLARE · BLOCKED</div></div></div>
+          <div class="action"><div class="aflag lime"></div><div><div class="action-txt">M&E pipeline: run Stage 1A v4 legend extractor (extract_legend.py @ 200 DPI). Not yet executed. Blocked on ThinkPad.</div><div class="action-tag">M&E SCOPE READER · PIPELINE</div></div></div>
+          <div class="action"><div class="aflag lime"></div><div><div class="action-txt">Control Freak: integrate scanCheck.ts residual-check engine. Seeking first pilot.</div><div class="action-tag">CONTROL FREAK · INTEGRATION</div></div></div>
+          <div class="action"><div class="aflag lime"></div><div><div class="action-txt">SR&ED: Contact NRC IRAP. File SR&ED + Ontario Innovation Tax Credit + EODF Community Stream. Time sensitive.</div><div class="action-tag">FINANCE · SR&ED</div></div></div>
+          <div class="action"><div class="aflag amber"></div><div><div class="action-txt">Switch all outgoing email from info@gradesnaps.ca → founder@tdoubleai.ca.</div><div class="action-tag">BRAND · EMAIL</div></div></div>
+          <div class="action"><div class="aflag lime"></div><div><div class="action-txt">delete stale deploy-2026-04-27 branch from GitHub — merged Apr 28, safe to remove.</div><div class="action-tag">GIT · RINGBACK</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: TOOLS -->
+  <div class="tab-panel" id="tab-tools">
+    <div class="tools-left panel">
+      <div class="panel-hdr">Sales Tools</div>
+      <div class="scroll">
+        <a href="https://drive.google.com/file/d/1BXcuVIyBI4uxBqLBUdSvliq7aOD3wuPC/view" target="_blank" class="trainer-card">
+          <div>
+            <div class="trainer-ttl">COC Sales Conversation Trainer</div>
+            <div class="trainer-sub">6 stages · Vibe Consulting + Ringback + Product routes<br>Full sideways reset coverage · Click to open</div>
+          </div>
+          <div class="trainer-arrow">→</div>
+        </a>
+
+        <div class="prompt-card">
+          <div class="prompt-ttl">Gemini Drive Roleplay Prompt — Copy before leaving</div>
+          <div class="prompt-txt">Hey Gemini. I want to do a sales roleplay. Play a small business owner at a Chamber of Commerce breakfast in Ontario. Pick a random trade. Give yourself a first name. Be skeptical. Push back if I'm vague. Throw me a curveball every few exchanges. When I try to close — stop and score me out of ten. Tell me what landed and what I should have said differently. Start by introducing yourself. Tell me your name, your trade, and one thing already on your mind this morning. Wait for me to speak first. Go.</div>
+          <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
+        </div>
+
+        <div class="deploy-section">
+          <div class="deploy-hdr">Demo Line</div>
+          <div class="deploy-txt"><span class="ok">+1 (343) 429-9165</span> — Ringback live demo</div>
+        </div>
+        <div class="deploy-section">
+          <div class="deploy-hdr">Ringback Admin</div>
+          <div class="deploy-txt"><span class="warn">ringback-production.up.railway.app/login</span><br>Auth: DASHBOARD_PASSWORD env var</div>
+        </div>
+        <div class="deploy-section">
+          <div class="deploy-hdr">Vibe Anchor</div>
+          <div class="deploy-txt" style="color:var(--white);font-style:italic">"Audit's no cost. Implementation $2,500–$5,000. Monthly ~$300. Most see that back in staff time inside 60 days."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="vdiv"></div>
+
+    <div class="tools-right panel">
+      <div class="panel-hdr">Deploy Paths</div>
+      <div class="scroll">
+        <div class="deploy-section">
+          <div class="deploy-hdr">Site</div>
+          <div class="deploy-txt">Replit #2 → GitHub (tdoubleai-site)<br>→ Netlify → <span class="ok">tdoubleai.ca</span></div>
+        </div>
+        <div class="deploy-section">
+          <div class="deploy-hdr">Ringback</div>
+          <div class="deploy-txt">GitHub (sitebrief-ai/ringback)<br>→ Railway → <span class="ok">ringback-production.up.railway.app</span></div>
+        </div>
+        <div class="deploy-section">
+          <div class="deploy-hdr">Git State</div>
+          <div class="deploy-txt">
+            <span class="ok">main</span> — current, Railway auto-deploys<br>
+            archive-pre-2026-04-27 — 113 commits<br>
+            <span class="warn">deploy-2026-04-27</span> — stale, safe to delete
+          </div>
+        </div>
+        <div class="deploy-section">
+          <div class="deploy-hdr">Primary Dev</div>
+          <div class="deploy-txt">Claude Code — all new dev<br>Replit — legacy Ringback only</div>
+        </div>
+        <div class="deploy-section">
+          <div class="deploy-hdr red">Constraints</div>
+          <div class="deploy-txt"><span class="danger">City of Ottawa — OFF LIMITS</span><br><span class="warn">CTHQ — no public post until signed</span></div>
+        </div>
+        <div class="panel-hdr" style="margin-top:14px">Stack Status</div>
+        <div class="stack-row"><span class="stack-nm">Railway</span><span class="stack-dtl">Ringback · auto-deploy</span><span class="sdot"></span></div>
+        <div class="stack-row"><span class="stack-nm">Supabase</span><span class="stack-dtl">Pro · Montreal · PITR on</span><span class="sdot"></span></div>
+        <div class="stack-row"><span class="stack-nm">Netlify</span><span class="stack-dtl">tdoubleai.ca</span><span class="sdot"></span></div>
+        <div class="stack-row"><span class="stack-nm">Twilio</span><span class="stack-dtl">Ringback SMS</span><span class="sdot"></span></div>
+        <div class="stack-row"><span class="stack-nm">Cloudflare</span><span class="stack-dtl">DNS/CDN · login blocked</span><span class="sdot amber"></span></div>
+        <div class="stack-row"><span class="stack-nm">Anthropic</span><span class="stack-dtl">claude-sonnet-4-20250514</span><span class="sdot amber"></span></div>
+        <div class="stack-row"><span class="stack-nm">Stripe</span><span class="stack-dtl">CAD billing · live</span><span class="sdot"></span></div>
+        <div class="stack-row"><span class="stack-nm">UptimeRobot</span><span class="stack-dtl">5-min · active + green</span><span class="sdot"></span></div>
+        <div class="stack-row"><span class="stack-nm">Bandwidth</span><span class="stack-dtl">FWS SMS · carrier direct</span><span class="sdot muted"></span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-lbl">TDOUBLEAI</div>
+  <div class="ticker-scroll">
+    <div class="ticker-inner">
+      <span class="ok">RINGBACK LIVE · $79/MO</span>
+      <span class="hi">⚠ ROTATE ANTHROPIC_API_KEY</span>
+      <span>ALLIANCE: 15+ DAYS SILENT — ADDENDUM EMAIL DUE</span>
+      <span class="hi">⚠ REBUILD RLS AUDIT SCRIPTS</span>
+      <span>CTHQ MEMO EMAIL PENDING — FOUNDER@TDOUBLEAI.CA</span>
+      <span class="ok">SUPABASE PRO · MONTREAL · PITR ACTIVE</span>
+      <span class="hi">SRED: NRC IRAP — TIME SENSITIVE</span>
+      <span>CLOUDFLARE BLOCKED — GST/2FA ISSUE MAY 17</span>
+      <span class="ok">UPTIMEROBOT: GREEN</span>
+      <span>DEMO: +1 (343) 429-9165</span>
+      <span class="hi">BREAK-EVEN: 1 SUBSCRIBER · $1M ARR = 1,056</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// Clock
+function updateClock(){
+  const now=new Date();
+  const t=now.toLocaleTimeString('en-CA',{timeZone:'America/Toronto',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const d=now.toLocaleDateString('en-CA',{timeZone:'America/Toronto',weekday:'short',month:'short',day:'numeric'});
+  document.getElementById('clock').textContent=d+' · '+t+' ET';
+}
+updateClock();setInterval(updateClock,1000);
+
+// Tabs
+function switchTab(name){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('btn-'+name).classList.add('active');
+}
+
+// Copy prompt
+function copyPrompt(btn){
+  const txt=btn.previousElementSibling.textContent;
+  navigator.clipboard.writeText(txt).then(()=>{
+    btn.textContent='Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Copy Prompt';btn.classList.remove('copied')},2000);
+  });
+}
+</script>
+
+<!-- PWA MANIFEST (inline) -->
+<script>
+const manifest={
+  name:'TDoubleAI Command',
+  short_name:'TDoubleAI',
+  description:'Founder Command Dashboard',
+  start_url:'.',
+  display:'standalone',
+  background_color:'#0b0a08',
+  theme_color:'#0b0a08',
+  orientation:'landscape',
+  icons:[
+    {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="%230b0a08"/><text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" font-size="110" fill="%23c84f09">T</text></svg>',sizes:'192x192',type:'image/svg+xml'},
+    {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="%230b0a08"/><text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" font-size="300" fill="%23c84f09">T</text></svg>',sizes:'512x512',type:'image/svg+xml'}
+  ]
+};
+const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+const url=URL.createObjectURL(blob);
+const link=document.createElement('link');
+link.rel='manifest';link.href=url;
+document.head.appendChild(link);
+</script>
+
+<!-- SERVICE WORKER -->
+<script>
+if('serviceWorker' in navigator){
+  const swCode=`
+    const CACHE='tdoubleai-v1';
+    self.addEventListener('install',e=>{self.skipWaiting()});
+    self.addEventListener('activate',e=>{
+      e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+    });
+    self.addEventListener('fetch',e=>{
+      if(e.request.url.includes('fonts.googleapis')||e.request.url.includes('fonts.gstatic')){
+        e.respondWith(caches.open(CACHE).then(c=>c.match(e.request).then(r=>r||(fetch(e.request).then(res=>{c.put(e.request,res.clone());return res})))));
+      }
+    });
+  `;
+  const blob=new Blob([swCode],{type:'application/javascript'});
+  const swUrl=URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+</script>
+
+</body>
+</html>
